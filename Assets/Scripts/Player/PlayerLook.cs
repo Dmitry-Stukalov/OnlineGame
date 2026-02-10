@@ -11,30 +11,43 @@ public class PlayerLook : MonoBehaviour
 	[SerializeField] private PlayerHealth _playerHealth;
 	[SerializeField] private PhotonView _photonView;
 	[SerializeField] private float LookSpeed;
+
+	[Header("RayCast")]
+	[SerializeField] private Camera MyCamera;
+	[SerializeField] private GameObject TintForPlay;
+	private PlayerHealth _enemy;
+	Vector3 ScreenCenter;
 	private List<Card> _myCards = new List<Card>();
 	private GameManager _gameManager;
 	private Vector2 MouseAxis;
 	private InputAction LookAction;
 	private float RotationX;
 	private float RotationY;
+	private bool IsCanPlayCard = false;
+	public bool IsHaveCard = false;
 
-	private void Awake()
+	public void Initializing()
 	{
 		if (!_photonView.IsMine) return;
 
 		LookAction = InputSystem.actions.FindAction("Look");
 
 		_gameManager = FindFirstObjectByType<GameManager>();
+		_gameManager.OnThinkingPhaseStart += ThinkingPhaseStart;
+		_gameManager.OnThinkingPhaseEnd += ThinkingPhaseEnd;
 		Cursor.lockState = CursorLockMode.Locked;
 		Cursor.visible = false;
+
+		ScreenCenter = new Vector3(Screen.width / 2, Screen.height / 2, 0);
+
+		Debug.Log("Z");
 	}
 
 	public void OnTriggerEnter(Collider other)
 	{
-		Debug.Log("ZZZ");
-
 		if (other.CompareTag("Card"))
 		{
+			GetCard(other.gameObject.GetComponent<Card>());
 			other.gameObject.GetComponent<Card>().IsMove = false;
 			other.transform.SetParent(CardPlace.transform, false);
 			other.transform.localRotation = Quaternion.Euler(0, 90, 90);
@@ -42,15 +55,42 @@ public class PlayerLook : MonoBehaviour
 		}
 	}
 
-	public void GetCard(Card card)
+	private void GetCard(Card card)
 	{
 		_myCards.Add(card);
+		IsHaveCard = true;
 	}
 
-	public void PlayCard(Card card)
+
+	private void PlayCard(Card card, PlayerHealth enemy)
 	{
-		card.PlayCard();
+		if (_enemy == null) return;
+
+
+		card.PlayCard(enemy);
 		_myCards.Remove(card);
+
+		if (_myCards.Count == 0 ) IsHaveCard = false;
+	}
+
+	public void ThinkingPhaseStart()
+	{
+		IsCanPlayCard = true;
+		Debug.Log("H");
+	}
+
+
+	public void ThinkingPhaseEnd()
+	{
+		IsCanPlayCard = false;
+
+		for (int i = 0; i < _myCards.Count; i++)
+		{
+			_myCards[i].DestroyCard();
+			_myCards.RemoveAt(i);
+		}
+
+		Debug.Log("Can'tPlayCard");
 	}
 
 	private void Update()
@@ -58,9 +98,50 @@ public class PlayerLook : MonoBehaviour
 		if (!_photonView.IsMine) return;
 		if (_playerHealth.IsDead) return;
 
-		if (Keyboard.current.spaceKey.wasPressedThisFrame && PhotonNetwork.IsMasterClient) _gameManager.StartGame();
+		if (Keyboard.current.spaceKey.wasPressedThisFrame && PhotonNetwork.IsMasterClient) _gameManager.photonView.RPC("StartGame", RpcTarget.All);
 
 		if (Keyboard.current.escapeKey.wasPressedThisFrame) Application.Quit();
+
+		if (Mouse.current.leftButton.wasPressedThisFrame && _myCards.Count != 0 && IsCanPlayCard) PlayCard(_myCards[0], _enemy);
+
+		/*MouseAxis = LookAction.ReadValue<Vector2>();
+
+		RotationX += -MouseAxis.y * LookSpeed;
+		RotationX = Mathf.Clamp(RotationX, -20, 20);
+
+		RotationY += -MouseAxis.x * LookSpeed;
+		//RotationY = Mathf.Clamp(RotationY, -45, 45);
+
+		transform.rotation = Quaternion.Euler(RotationX, -RotationY, 0);*/
+	}
+
+	private void FixedUpdate()
+	{
+		if (!_photonView.IsMine) return;
+
+		Ray ray = MyCamera.ScreenPointToRay(ScreenCenter);
+
+		if (Physics.Raycast(ray, out RaycastHit hit))
+		{
+			Debug.Log("B");
+			if (hit.transform.CompareTag("Player") && IsCanPlayCard)
+			{
+				Debug.Log("A");
+				TintForPlay.SetActive(true);
+				_enemy = hit.transform.GetComponent<PlayerHealth>();
+			}
+			else
+			{
+				TintForPlay.SetActive(false);
+				_enemy = null;
+			}
+		}
+		else
+		{
+			TintForPlay.SetActive(false);
+			_enemy = null;
+		}
+
 
 		MouseAxis = LookAction.ReadValue<Vector2>();
 

@@ -5,52 +5,30 @@ using System.Collections.Generic;
 using System;
 using UnityEngine.Pool;
 using ExitGames.Client.Photon;
+using Photon.Pun;
 
-public class DeckOfCards : MonoBehaviour
+public class DeckOfCards : MonoBehaviourPunCallbacks
 {
 	[SerializeField] private GameObject _card;
 	public int CardsCount { get; set; } = 0;
-	private ObjectPool<GameObject> Cards;
 
 	public event Action OnCardsDistribution;
 
-
-	private void Start()
-	{
-		Cards = new ObjectPool<GameObject>
-		(
-			createFunc: () => Instantiate(_card),
-			actionOnGet: obj => obj.SetActive(true),
-			actionOnRelease: obj => obj.SetActive(false),
-			actionOnDestroy: Destroy,
-			defaultCapacity: 5,    // Начальный размер
-			maxSize: 20            // Максимум, остальное уничтожается
-		);
-	}
 
 	public void SetCardsCount(int playersCount)
 	{
 		CardsCount = playersCount * 7;
 	}
 
-	public void Distribution(List<Transform> players)
+	public void Distribution()
 	{
 		//Разрача карт игрокам
 
-		foreach (Transform player in players)
-		{
-			var card = Cards.Get();
-			card.GetComponent<Card>().SetTarget(player);
-		}
 
-		Debug.Log("Z");
+		var card = PhotonNetwork.Instantiate(_card.name, transform.position, Quaternion.identity);
+
+		foreach (GameObject player in GameObject.FindGameObjectsWithTag("Player")) if (player.GetComponent<PhotonView>().IsMine) card.GetComponent<Card>().SetTarget(player.transform);
+
 		OnCardsDistribution?.Invoke();
-	}
-
-	public void ReleaseCard(GameObject card)
-	{
-		Cards.Release(card);
-		card.transform.position = transform.position;
-		card.transform.rotation = transform.rotation;
 	}
 }
