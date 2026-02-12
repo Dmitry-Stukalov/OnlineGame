@@ -13,6 +13,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 	[SerializeField] private List<SpawnPoint> _spawnPoints;
 	[SerializeField] private DeckOfCards _deckOfCards;
 	private List<Transform> _playersTransform = new List<Transform>();
+	private List<PlayerLook> _players = new List<PlayerLook>();
 	private Timer _thinkingPhaseTimer;
 	private Timer _playPhaseTimer;					//Заглушка
 	private int _gamePhase = -1;
@@ -36,11 +37,11 @@ public class GameManager : MonoBehaviourPunCallbacks
 		_playPhaseTimer = new Timer(10f);
 		_playPhaseTimer.OnTimerEnd += FinalPhase;
 
-		_thinkingPhaseTimer = new Timer(5f);
-		_thinkingPhaseTimer.OnTimerEnd += ThinkingPhaseEnd;
+		_thinkingPhaseTimer = new Timer(10f);
+		_thinkingPhaseTimer.OnTimerEnd += () => photonView.RPC("ThinkingPhaseEnd", RpcTarget.All);
 		_thinkingPhaseTimer.SetPause();
 
-		_deckOfCards.OnCardsDistribution += ThinkingPhaseStart;
+		_deckOfCards.OnCardsDistribution += () => photonView.RPC("ThinkingPhaseStart", RpcTarget.All);
 	}
 
 	//Срабатывает локально для клиентов
@@ -51,15 +52,6 @@ public class GameManager : MonoBehaviourPunCallbacks
 		player.GetComponent<PlayerLook>().Initializing();
 
 		for (int i = 0; i < PhotonNetwork.CountOfPlayers; i++) _spawnPoints[i].IsEmpty = false;
-
-		_playPhaseTimer = new Timer(10f);
-		_playPhaseTimer.OnTimerEnd += FinalPhase;
-
-		_thinkingPhaseTimer = new Timer(5f);
-		_thinkingPhaseTimer.OnTimerEnd += ThinkingPhaseEnd;
-		_thinkingPhaseTimer.SetPause();
-
-		_deckOfCards.OnCardsDistribution += ThinkingPhaseStart;
 	}
 
 	//Срабатывает у всех
@@ -79,6 +71,8 @@ public class GameManager : MonoBehaviourPunCallbacks
 	{
 		if (_gamePhase != -1) return;
 
+		_deckOfCards.CountPlayers();
+
 		_gamePhase = 0;
 
 		//Надо переделать нормально
@@ -89,62 +83,71 @@ public class GameManager : MonoBehaviourPunCallbacks
 			if (!spawnPoint.IsEmpty) _playersTransform.Add(spawnPoint.transform);
 		}
 
-		Debug.Log($"Игра началась, игроков: {_playersTransform.Count}");
+		//Debug.Log($"Игра началась, игроков: {_playersTransform.Count}");
 
 		DistributionPhase();
 	}
 
 	private void DistributionPhase()
 	{
+		if (!PhotonNetwork.IsMasterClient) return;
+
 		_gamePhase = 1;
 
-		Debug.Log($"Раздаю карты {PhotonNetwork.PlayerList.Length} игрокам");
+		//Debug.Log($"Раздаю карты {PhotonNetwork.PlayerList.Length} игрокам");
 
-		_deckOfCards.Distribution();
+		_deckOfCards.photonView.RPC("Distribution", RpcTarget.All);
 	}
 
+	[PunRPC]
 	private void ThinkingPhaseStart()
 	{
 		_gamePhase = 2;
 
-		Debug.Log("Началась фаза размышлений");
+		//Debug.Log("Началась фаза размышлений");
 
-		_thinkingPhaseTimer.Continue();
+		if (PhotonNetwork.IsMasterClient)  _thinkingPhaseTimer.Continue();
 		OnThinkingPhaseStart?.Invoke();
-
 	}
 
+	[PunRPC]
 	private void ThinkingPhaseEnd()
 	{
 		_gamePhase = 3;
 
-		Debug.Log("Фаза размышлений закончилась");
+		//Debug.Log("Фаза размышлений закончилась");
 
-		_thinkingPhaseTimer.ResetTimer(true);
+		if (PhotonNetwork.IsMasterClient) _thinkingPhaseTimer.ResetTimer(true);
 
-		PlayPhase();
+		photonView.RPC("PlayPhase", RpcTarget.All);
 
 		OnThinkingPhaseEnd?.Invoke();
 	}
 
+	[PunRPC]
 	private void PlayPhase()
 	{
 		_gamePhase = 4;
 
-		Debug.Log("Началась фаза разыгровки");
+		//Debug.Log("Началась фаза разыгровки");
 	}
 
+	[PunRPC]
 	private void FinalPhase()
 	{
-		_gamePhase = -1;
+		_gamePhase = 0;
 
-		_playPhaseTimer.ResetTimer(false);
+		if (PhotonNetwork.IsMasterClient) _playPhaseTimer.ResetTimer(false);
 
-		Debug.Log("Раунд закончился");
+		//Debug.Log("Раунд закончился");
+
+		DistributionPhase();
 	}
 
 	private void Update()
 	{
+		if (!PhotonNetwork.IsMasterClient) return;
+
 		if (_thinkingPhaseTimer != null) _thinkingPhaseTimer.Tick(Time.deltaTime);
 
 		if (_gamePhase == 4) _playPhaseTimer.Tick(Time.deltaTime);

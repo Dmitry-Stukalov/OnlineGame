@@ -4,12 +4,12 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
+using TMPro;
 
-public class PlayerLook : MonoBehaviour
+public class PlayerLook : MonoBehaviourPunCallbacks
 {
 	[SerializeField] private GameObject CardPlace;
 	[SerializeField] private PlayerHealth _playerHealth;
-	[SerializeField] private PhotonView _photonView;
 	[SerializeField] private float LookSpeed;
 
 	[Header("RayCast")]
@@ -24,23 +24,24 @@ public class PlayerLook : MonoBehaviour
 	private float RotationX;
 	private float RotationY;
 	private bool IsCanPlayCard = false;
+	private bool IsChooseTarget = false;
 	public bool IsHaveCard = false;
 
 	public void Initializing()
 	{
-		if (!_photonView.IsMine) return;
+		if (!photonView.IsMine) return;
 
 		LookAction = InputSystem.actions.FindAction("Look");
 
 		_gameManager = FindFirstObjectByType<GameManager>();
+
 		_gameManager.OnThinkingPhaseStart += ThinkingPhaseStart;
 		_gameManager.OnThinkingPhaseEnd += ThinkingPhaseEnd;
+
 		Cursor.lockState = CursorLockMode.Locked;
 		Cursor.visible = false;
 
 		ScreenCenter = new Vector3(Screen.width / 2, Screen.height / 2, 0);
-
-		Debug.Log("Z");
 	}
 
 	public void OnTriggerEnter(Collider other)
@@ -61,87 +62,51 @@ public class PlayerLook : MonoBehaviour
 		IsHaveCard = true;
 	}
 
-
 	private void PlayCard(Card card, PlayerHealth enemy)
 	{
+		if (!photonView.IsMine) return;
 		if (_enemy == null) return;
-
 
 		card.PlayCard(enemy);
 		_myCards.Remove(card);
+
+		IsCanPlayCard = false;
 
 		if (_myCards.Count == 0 ) IsHaveCard = false;
 	}
 
 	public void ThinkingPhaseStart()
 	{
+		if (!photonView.IsMine) return;
 		IsCanPlayCard = true;
-		Debug.Log("H");
+		IsChooseTarget = false;
 	}
-
-
 	public void ThinkingPhaseEnd()
 	{
+		if (!photonView.IsMine) return;
+		if (IsChooseTarget) PlayCard(_myCards[0], _enemy);
+
 		IsCanPlayCard = false;
+		IsChooseTarget = false;
 
 		for (int i = 0; i < _myCards.Count; i++)
 		{
 			_myCards[i].DestroyCard();
 			_myCards.RemoveAt(i);
 		}
-
-		Debug.Log("Can'tPlayCard");
 	}
 
 	private void Update()
 	{
-		if (!_photonView.IsMine) return;
+		if (!photonView.IsMine) return;
 		if (_playerHealth.IsDead) return;
 
 		if (Keyboard.current.spaceKey.wasPressedThisFrame && PhotonNetwork.IsMasterClient) _gameManager.photonView.RPC("StartGame", RpcTarget.All);
 
 		if (Keyboard.current.escapeKey.wasPressedThisFrame) Application.Quit();
 
-		if (Mouse.current.leftButton.wasPressedThisFrame && _myCards.Count != 0 && IsCanPlayCard) PlayCard(_myCards[0], _enemy);
-
-		/*MouseAxis = LookAction.ReadValue<Vector2>();
-
-		RotationX += -MouseAxis.y * LookSpeed;
-		RotationX = Mathf.Clamp(RotationX, -20, 20);
-
-		RotationY += -MouseAxis.x * LookSpeed;
-		//RotationY = Mathf.Clamp(RotationY, -45, 45);
-
-		transform.rotation = Quaternion.Euler(RotationX, -RotationY, 0);*/
-	}
-
-	private void FixedUpdate()
-	{
-		if (!_photonView.IsMine) return;
-
-		Ray ray = MyCamera.ScreenPointToRay(ScreenCenter);
-
-		if (Physics.Raycast(ray, out RaycastHit hit))
-		{
-			Debug.Log("B");
-			if (hit.transform.CompareTag("Player") && IsCanPlayCard)
-			{
-				Debug.Log("A");
-				TintForPlay.SetActive(true);
-				_enemy = hit.transform.GetComponent<PlayerHealth>();
-			}
-			else
-			{
-				TintForPlay.SetActive(false);
-				_enemy = null;
-			}
-		}
-		else
-		{
-			TintForPlay.SetActive(false);
-			_enemy = null;
-		}
-
+		if (Mouse.current.leftButton.wasPressedThisFrame && _myCards.Count != 0 && IsCanPlayCard && _enemy != null) IsChooseTarget = true;//PlayCard(_myCards[0], _enemy);
+		if (Mouse.current.rightButton.wasPressedThisFrame && _myCards.Count != 0 && IsCanPlayCard && IsChooseTarget) IsChooseTarget = false;
 
 		MouseAxis = LookAction.ReadValue<Vector2>();
 
@@ -152,5 +117,37 @@ public class PlayerLook : MonoBehaviour
 		//RotationY = Mathf.Clamp(RotationY, -45, 45);
 
 		transform.rotation = Quaternion.Euler(RotationX, -RotationY, 0);
+	}
+
+	private void FixedUpdate()
+	{
+		if (!photonView.IsMine) return;
+
+		Ray ray = MyCamera.ScreenPointToRay(ScreenCenter);
+
+		if (!IsChooseTarget)
+		{
+			if (Physics.Raycast(ray, out RaycastHit hit))
+			{
+				Debug.Log($"Кидаю луч. IsCanPlayCard = {IsCanPlayCard}");
+				if (hit.transform.CompareTag("Player") && IsCanPlayCard)
+				{
+					Debug.Log("Попал");
+					TintForPlay.SetActive(true);
+					_enemy = hit.transform.GetComponent<PlayerHealth>();
+				}
+				else
+				{
+					TintForPlay.SetActive(false);
+					_enemy = null;
+				}
+			}
+			else
+			{
+				TintForPlay.SetActive(false);
+				_enemy = null;
+			}
+		}
+		else TintForPlay.SetActive(false);
 	}
 }

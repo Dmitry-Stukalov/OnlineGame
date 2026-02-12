@@ -5,8 +5,6 @@ public class DamageCard : Card, IDamageCard
 {
 	public override void SetTarget(Transform player)
 	{
-		//if (!photonView.IsMine) return;
-		
 		TargetPlayer = player;
 		IsMove = true;
 	}
@@ -30,8 +28,8 @@ public class DamageCard : Card, IDamageCard
 
 	public void DealDamage(int damageValue)
 	{
-		//EnemyPlayer.GetDamage(damageValue);
-		Debug.Log($"Enemy get {damageValue} damage");
+		EnemyPlayer.GetDamage(damageValue);
+		Debug.Log($"Enemy get {damageValue} damage. {EnemyPlayer.GetHealth()}");
 	}
 
 	private void FixedUpdate()

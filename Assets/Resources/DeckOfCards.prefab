@@ -48,7 +48,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b50515f138aeb8642a6ef19b86f6a8b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _card: {fileID: 6508514494207735619, guid: 464346ed629d00a4b98dfc94c8a885af, type: 3}
+  _cards:
+  - {fileID: 6508514494207735619, guid: 61634922d8a5a104d8f0dad1863d9f6b, type: 3}
+  - {fileID: 6508514494207735619, guid: 464346ed629d00a4b98dfc94c8a885af, type: 3}
 --- !u!33 &8864860115484888520
 MeshFilter:
   m_ObjectHideFlags: 0

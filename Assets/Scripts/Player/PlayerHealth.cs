@@ -32,4 +32,6 @@ public class PlayerHealth: MonoBehaviour
 
 		OnHeal?.Invoke();
 	}
+
+	public int GetHealth() => _health;
 }

@@ -7,10 +7,10 @@ public abstract class Card : MonoBehaviourPunCallbacks
 {
 	public DeckOfCards Deck { get; set; }
 	public PlayerHealth EnemyPlayer { get; set; }
-	public ParticleSystem Effect { get; set; }
+	[field: SerializeField] public ParticleSystem Effect { get; set; }
 	public Transform TargetPlayer { get; set; }
-	public int EffectValue { get; set; } = 0;
-	public int PointValue { get; set; } = 0;
+	[field: SerializeField] public int EffectValue { get; set; }
+	[field: SerializeField] public int PointValue { get; set; }
 	public bool IsMove { get; set; } = false;
 
 	public abstract void SetTarget(Transform player);
