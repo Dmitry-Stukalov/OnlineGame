@@ -48,6 +48,12 @@ MonoBehaviour:
   - PlayPhase
   - ThinkingPhaseEnd
   - ThinkingPhaseStart
+  - SetName
+  - GetDamage
+  - GameEnd
+  - SetPoint
+  - UpdateWinImage
+  - PlayEffect
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 0

@@ -12,8 +12,10 @@ public class GameManager : MonoBehaviourPunCallbacks
 	[SerializeField] private GameObject _player;
 	[SerializeField] private List<SpawnPoint> _spawnPoints;
 	[SerializeField] private DeckOfCards _deckOfCards;
+	[SerializeField] private UpdatePlayersUI _updatePlayersUI;
+	private Dictionary<int, int> _playersPoints = new Dictionary<int, int>();
 	private List<Transform> _playersTransform = new List<Transform>();
-	private List<PlayerLook> _players = new List<PlayerLook>();
+	private List<PlayerHealth> _players = new List<PlayerHealth>();
 	private Timer _thinkingPhaseTimer;
 	private Timer _playPhaseTimer;					//Заглушка
 	private int _gamePhase = -1;
@@ -71,19 +73,16 @@ public class GameManager : MonoBehaviourPunCallbacks
 	{
 		if (_gamePhase != -1) return;
 
-		_deckOfCards.CountPlayers();
-
 		_gamePhase = 0;
+
+		if (PhotonNetwork.IsMasterClient)
+			foreach (var player in FindObjectsByType<PlayerHealth>(FindObjectsSortMode.None)) _players.Add(player);
 
 		//Надо переделать нормально
 		_playersTransform.Clear();
 
-		foreach (SpawnPoint spawnPoint in _spawnPoints)
-		{
+		foreach (SpawnPoint spawnPoint in _spawnPoints) 
 			if (!spawnPoint.IsEmpty) _playersTransform.Add(spawnPoint.transform);
-		}
-
-		//Debug.Log($"Игра началась, игроков: {_playersTransform.Count}");
 
 		DistributionPhase();
 	}
@@ -94,17 +93,13 @@ public class GameManager : MonoBehaviourPunCallbacks
 
 		_gamePhase = 1;
 
-		//Debug.Log($"Раздаю карты {PhotonNetwork.PlayerList.Length} игрокам");
-
-		_deckOfCards.photonView.RPC("Distribution", RpcTarget.All);
+		_deckOfCards.GetRandomCards();
 	}
 
 	[PunRPC]
 	private void ThinkingPhaseStart()
 	{
 		_gamePhase = 2;
-
-		//Debug.Log("Началась фаза размышлений");
 
 		if (PhotonNetwork.IsMasterClient)  _thinkingPhaseTimer.Continue();
 		OnThinkingPhaseStart?.Invoke();
@@ -115,7 +110,6 @@ public class GameManager : MonoBehaviourPunCallbacks
 	{
 		_gamePhase = 3;
 
-		//Debug.Log("Фаза размышлений закончилась");
 
 		if (PhotonNetwork.IsMasterClient) _thinkingPhaseTimer.ResetTimer(true);
 
@@ -128,20 +122,52 @@ public class GameManager : MonoBehaviourPunCallbacks
 	private void PlayPhase()
 	{
 		_gamePhase = 4;
-
-		//Debug.Log("Началась фаза разыгровки");
 	}
 
 	[PunRPC]
 	private void FinalPhase()
 	{
+		int t = 0;
+
 		_gamePhase = 0;
 
 		if (PhotonNetwork.IsMasterClient) _playPhaseTimer.ResetTimer(false);
 
-		//Debug.Log("Раунд закончился");
+		for (int i = 0; i < _players.Count; i++)
+			if (!_players[i].IsDead) t++;
 
-		DistributionPhase();
+		if (t <= 1) photonView.RPC("GameEnd", RpcTarget.All);
+		else DistributionPhase();
+	}
+
+	[PunRPC]
+	public void GameEnd()
+	{
+		if (!PhotonNetwork.IsMasterClient) return;
+
+		int maxPoints = 0;
+		int playerActorNumber = 0;
+
+		foreach (var key in _playersPoints.Keys)
+		{
+			if (_playersPoints[key] > maxPoints)
+			{
+				maxPoints = _playersPoints[key];
+				playerActorNumber = key;
+			}
+		}
+
+		_updatePlayersUI.photonView.RPC("UpdateWinImage", RpcTarget.All, playerActorNumber, maxPoints);
+		Debug.Log("Игра закончилась");
+	}
+
+
+	[PunRPC]
+	public void SetPoint(int playerActorNumber, int points)
+	{
+		if (!PhotonNetwork.IsMasterClient) return;
+
+		_playersPoints[playerActorNumber] = points;
 	}
 
 	private void Update()

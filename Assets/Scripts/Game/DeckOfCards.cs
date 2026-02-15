@@ -12,6 +12,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 public class DeckOfCards : MonoBehaviourPunCallbacks
 {
 	[SerializeField] private List<GameObject> _cards;
+	private Dictionary<int, int> _cardsByActors = new Dictionary<int, int>();
 	private int[] _players;
 	public int CardsCount { get; set; } = 0;
 
@@ -23,41 +24,39 @@ public class DeckOfCards : MonoBehaviourPunCallbacks
 		CardsCount = playersCount * 7;
 	}
 
-	public void CountPlayers()
-	{
-		if (!PhotonNetwork.IsMasterClient) return;
-
-		_players = new int[PhotonNetwork.PlayerList.Length];
-
-		GetRandomCards();
-	}
-
 	public void GetRandomCards()
 	{
-		for (int i = 0; i < _players.Length; i++)
-		{
-			_players[i] = UnityEngine.Random.Range(0, _cards.Count);
-		}
+		foreach (var player in PhotonNetwork.PlayerList) _cardsByActors[player.ActorNumber] = UnityEngine.Random.Range(0, _cards.Count);
+
+		photonView.RPC("Distribution", RpcTarget.All, _cardsByActors);
 	}
 
 	[PunRPC]
-	public void Distribution()
+	public void Distribution(Dictionary<int, int> cardsByActors)
 	{
-		//Раздача карт игрокам
-
-		for (int i = 0; i < PhotonNetwork.PlayerList.Length; i++)
-		{
-			if (PhotonNetwork.PlayerList[i].IsLocal)
-			{
-				var card = PhotonNetwork.Instantiate(_cards[_players[i]].name, transform.position, Quaternion.identity);
-
-				foreach (GameObject player in GameObject.FindGameObjectsWithTag("Player")) if (player.GetComponent<PhotonView>().IsMine) card.GetComponent<Card>().SetTarget(player.transform);
-
-				break;
-			}
-		}
-		//var card = PhotonNetwork.Instantiate(_cards[_players[]].name, transform.position, Quaternion.identity);
+		ReceiveCard(cardsByActors);
 
 		OnCardsDistribution?.Invoke();
 	}
-}
+
+	private void ReceiveCard(Dictionary<int, int> cards)
+	{
+		int myCard = cards[PhotonNetwork.LocalPlayer.ActorNumber];
+
+		CreateCard(myCard);
+	}
+
+	private void CreateCard(int cardID)
+	{
+		var card = PhotonNetwork.Instantiate(_cards[cardID].name, transform.position, Quaternion.identity);
+
+		foreach (GameObject player in GameObject.FindGameObjectsWithTag("Player"))
+		{
+			if (player.GetComponent<PhotonView>().IsMine)
+			{
+				card.GetComponent<Card>().SetTarget(player.transform);
+				break;
+			}
+		}
+	}
+}	

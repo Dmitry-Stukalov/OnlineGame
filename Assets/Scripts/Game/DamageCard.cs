@@ -1,4 +1,5 @@
 using Photon.Pun;
+using System.Collections;
 using UnityEngine;
 
 public class DamageCard : Card, IDamageCard
@@ -9,7 +10,7 @@ public class DamageCard : Card, IDamageCard
 		IsMove = true;
 	}
 
-	public override void PlayCard(PlayerHealth enemy)
+	public override void PlayCard(GameObject enemy)
 	{
 		EnemyPlayer = enemy;
 
@@ -17,7 +18,7 @@ public class DamageCard : Card, IDamageCard
 
 		Debug.Log("Card is played");
 
-		DestroyCard();
+		StartCoroutine(DestroyPause());
 	}
 
 	public override void DestroyCard()
@@ -28,8 +29,19 @@ public class DamageCard : Card, IDamageCard
 
 	public void DealDamage(int damageValue)
 	{
-		EnemyPlayer.GetDamage(damageValue);
-		Debug.Log($"Enemy get {damageValue} damage. {EnemyPlayer.GetHealth()}");
+		int actorNumber = EnemyPlayer.GetComponent<PhotonView>().OwnerActorNr;
+
+		EnemyPlayer.GetComponent<PhotonView>().RPC("GetDamage", PhotonNetwork.CurrentRoom.GetPlayer(actorNumber), damageValue);
+
+		EnemyPlayer.GetComponent<PlayerHealth>().GetDamage(damageValue);
+		Debug.Log($"Enemy get {damageValue} damage. {EnemyPlayer.GetComponent<PlayerHealth>().GetHealth()}");
+	}
+
+	private IEnumerator DestroyPause()
+	{
+		yield return new WaitForSeconds(EffectTime);
+
+		DestroyCard();
 	}
 
 	private void FixedUpdate()
