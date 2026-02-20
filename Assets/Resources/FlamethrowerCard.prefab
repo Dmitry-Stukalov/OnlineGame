@@ -34,8 +34,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 200.406, y: 1.986, z: 798.2616}
-  m_LocalScale: {x: 0.32547727, y: 0.03618418, z: 0.16775183}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 0.1, y: 0.011117267, z: 0.05154026}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 2250361197124612782}
   m_Father: {fileID: 0}
@@ -127,7 +127,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   <Effect>k__BackingField: {fileID: 2155850072971843742}
-  <EffectValue>k__BackingField: 5
+  <EffectValue>k__BackingField: 4
   <PointValue>k__BackingField: 2
   <EffectTime>k__BackingField: 5
 --- !u!114 &2670310132050929466

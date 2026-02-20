@@ -49,8 +49,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _cards:
-  - {fileID: 6508514494207735619, guid: 464346ed629d00a4b98dfc94c8a885af, type: 3}
-  - {fileID: 6508514494207735619, guid: 464346ed629d00a4b98dfc94c8a885af, type: 3}
+  - {fileID: 7329004265701976404, guid: 039d1c7293cea234b9aa82d8e961875f, type: 3}
+  - {fileID: 7329004265701976404, guid: 369e589b1770a564fa1bf5d73118b94c, type: 3}
+  - {fileID: 7329004265701976404, guid: 88709f282bac5b8419dafe63af92896d, type: 3}
+  - {fileID: 7329004265701976404, guid: 4f6a0fe6aa6a8394aa5ccd21e655850c, type: 3}
 --- !u!33 &8864860115484888520
 MeshFilter:
   m_ObjectHideFlags: 0
