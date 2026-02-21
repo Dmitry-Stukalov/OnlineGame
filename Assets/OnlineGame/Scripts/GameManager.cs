@@ -36,7 +36,8 @@ public class GameManager : MonoBehaviourPunCallbacks
 		}
 
 		var player = PhotonNetwork.Instantiate(_player.name, _spawnPoints[0].GetSpawnPointTransform().position, Quaternion.identity);
-		player.GetComponent<PlayerLook>().Initializing();
+		player.GetComponent<PlayerLook>().Initializing(_spawnPoints[0].GetSpawnStump().transform.rotation.eulerAngles.y);
+		//player.transform.rotation = _spawnPoints[0].GetSpawnStump().transform.rotation;
 		_spawnPoints[0].IsEmpty = false;
 
 		_playPhaseTimer = new Timer(10f);
@@ -56,7 +57,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 	{
 		var player = PhotonNetwork.Instantiate(_player.name, _spawnPoints[PhotonNetwork.PlayerList.Length - 1].GetSpawnPointTransform().position, Quaternion.identity);
 
-		player.GetComponent<PlayerLook>().Initializing();
+		player.GetComponent<PlayerLook>().Initializing(_spawnPoints[PhotonNetwork.PlayerList.Length - 1].transform.rotation.eulerAngles.y);
 
 		for (int i = 0; i < PhotonNetwork.CountOfPlayers; i++) _spawnPoints[i].IsEmpty = false;
 	}

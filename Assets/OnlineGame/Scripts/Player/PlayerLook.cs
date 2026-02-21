@@ -14,16 +14,19 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 	[SerializeField] private PlayerName _playerName;
 	[SerializeField] private GameObject _winImage;
 	[SerializeField] private TextMeshProUGUI _winText;
+	[SerializeField] private TintsScaler _tintsScaler;
 
 	[Header("RayCast")]
 	[SerializeField] private Camera MyCamera;
 	[SerializeField] private GameObject TintForPlay;
+	[SerializeField] private GameObject TintForStartPlay;
 	private GameObject _enemy;
 	Vector3 ScreenCenter;
 
 
 	private List<Card> _myCards = new List<Card>();
 	private GameManager _gameManager;
+	private float _startRotation;
 	private Vector2 MouseAxis;
 	private InputAction LookAction;
 	private float RotationX;
@@ -33,9 +36,11 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 	private bool IsChooseTarget = false;
 	public bool IsHaveCard = false;
 
-	public void Initializing()
+	public void Initializing(float startRotation)
 	{
 		if (!photonView.IsMine) return;
+
+		_startRotation = startRotation;
 
 		LookAction = InputSystem.actions.FindAction("Look");
 
@@ -54,6 +59,8 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 		_playerHealth.OnHealthChange += SetHealth;
 
 		SetHealth();
+
+		_tintsScaler.Initializing();
 	}
 
 	public void OnTriggerEnter(Collider other)
@@ -165,7 +172,11 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 		if (!photonView.IsMine) return;
 		if (_playerHealth.IsDead) return;
 
-		if (Keyboard.current.spaceKey.wasPressedThisFrame && PhotonNetwork.IsMasterClient) _gameManager.photonView.RPC("StartGame", RpcTarget.All);
+		if (Keyboard.current.spaceKey.wasPressedThisFrame && PhotonNetwork.IsMasterClient)
+		{
+			_gameManager.photonView.RPC("StartGame", RpcTarget.All);
+			TintForStartPlay.SetActive(false);
+		}
 
 		if (Keyboard.current.escapeKey.wasPressedThisFrame) Application.Quit();
 
@@ -183,9 +194,9 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 		RotationX = Mathf.Clamp(RotationX, -20, 20);
 
 		RotationY += -MouseAxis.x * LookSpeed;
-		//RotationY = Mathf.Clamp(RotationY, -45, 45);
+		RotationY = Mathf.Clamp(RotationY, -45, 45);
 
-		transform.rotation = Quaternion.Euler(RotationX, -RotationY, 0);
+		transform.rotation = Quaternion.Euler(RotationX, -RotationY + _startRotation, 0);
 	}
 
 	private void FixedUpdate()
