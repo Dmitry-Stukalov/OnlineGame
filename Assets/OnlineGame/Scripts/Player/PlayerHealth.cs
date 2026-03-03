@@ -3,12 +3,13 @@ using TMPro;
 using UnityEngine;
 using Photon.Pun;
 
-public class PlayerHealth: MonoBehaviourPunCallbacks
+public class PlayerHealth : MonoBehaviourPunCallbacks
 {
 	[SerializeField] private int _maxHealth;
-	[SerializeField] private TextMeshPro _text;
+	[SerializeField] private PlayerHealthMushrooms _playerHealthMushrooms;
 	private int _health = 10;
-	public bool IsDead { get; private set; } = false;
+	private int _currentHealth = 0;
+	public bool IsDead { get; set; } = false;
 
 	public event Action OnGetDamage;
 	public event Action OnHealthChange;
@@ -21,33 +22,10 @@ public class PlayerHealth: MonoBehaviourPunCallbacks
 	}
 
 	[PunRPC]
-	public void GetDamage(int damageValue)
-	{
-		_health -= damageValue;
-
-		//if (_health <= 0)
-		//{
-		//	_health = 0;
-		//	IsDead = true;
-		//	OnDeath?.Invoke();
-		//}
-
-		//UpdateText();
-		//OnGetDamage?.Invoke();
-		//OnHealthChange?.Invoke();
-	}
+	public void GetDamage(int damageValue) => _health -= damageValue;
 
 	[PunRPC]
-	public void Heal(int healValue)
-	{
-		_health += healValue;
-
-		//if (_health >= 10) _health = 10;
-
-		//UpdateText();
-		//OnHeal?.Invoke();
-		//OnHealthChange?.Invoke();
-	}
+	public void Heal(int healValue) => _health += healValue;
 
 	[PunRPC]
 	public void CheckHealth()
@@ -65,12 +43,20 @@ public class PlayerHealth: MonoBehaviourPunCallbacks
 			OnDeath?.Invoke();
 		}
 
-		UpdateText();
 		OnHealthChange?.Invoke();
 	}
 	public int GetHealth() => _health;
 
-	public int SetHealth(int newHealth) => _health = newHealth;
+	public void SetHealth(int newHealth) => _health = newHealth;
 
-	public void UpdateText() => _text.text = $"{_health}/{_maxHealth}";
+	[PunRPC]
+	public void UpdateMushrooms()
+	{
+		var dif = _currentHealth - _health;
+
+		if (dif > 0) _playerHealthMushrooms.HideMushroom(dif);
+		else if (dif < 0) _playerHealthMushrooms.ShowMushroom(dif);
+
+		_currentHealth = _health;
+	}
 }

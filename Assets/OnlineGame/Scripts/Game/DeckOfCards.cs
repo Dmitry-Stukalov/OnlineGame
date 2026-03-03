@@ -11,22 +11,75 @@ using System.Runtime.InteropServices.WindowsRuntime;
 
 public class DeckOfCards : MonoBehaviourPunCallbacks
 {
+	[SerializeField] private AudioSource _distributionSound;
 	[SerializeField] private List<GameObject> _cards;
+	private List<int> _gameCards = new List<int>();
 	private Dictionary<int, int> _cardsByActors = new Dictionary<int, int>();
 	private Dictionary<GameObject, GameObject> _cardsObjectsByActors = new Dictionary<GameObject, GameObject>();
 	public int CardsCount { get; set; } = 0;
+	private int _cardsCount = -1;
 
 	public event Action OnCardsDistribution;
+	public event Action OnCardsEnd;
 
 
 	public void SetCardsCount(int playersCount)
 	{
-		CardsCount = playersCount * 7;
+		int index = 0;
+
+		CardsCount = playersCount * 5;
+
+		_cardsCount = CardsCount;
+
+		for (int i = 0; i < _cardsCount; i++) transform.GetChild(i).gameObject.SetActive(true);
+
+		for (int i = 1; i < playersCount / 2; i++)
+		{
+			_gameCards.Add(0);
+			_cardsCount--;
+		}
+
+		for (int i = 0; i < playersCount; i++)
+		{
+			_gameCards.Add(1);
+			_cardsCount--;
+		}
+
+		index = _cardsCount / 2;
+
+		for (int i = 0; i < index; i++)
+		{
+			_gameCards.Add(2);
+			_cardsCount--;
+		}
+
+		index = _cardsCount;
+
+		for (int i = 0; i < index; i++)
+		{
+			_gameCards.Add(3);
+			_cardsCount--;
+		}
 	}
 
 	public void GetRandomCards()
 	{
-		foreach (var player in PhotonNetwork.PlayerList) _cardsByActors[player.ActorNumber] = UnityEngine.Random.Range(0, _cards.Count);
+		int randomNumber = -1;
+
+		if (_cardsCount == -1) SetCardsCount(PhotonNetwork.CountOfPlayers);
+
+		foreach (var player in PhotonNetwork.PlayerList)
+		{
+			randomNumber = UnityEngine.Random.Range(0, _gameCards.Count);
+
+			_cardsByActors[player.ActorNumber] = _gameCards[randomNumber];
+
+			_gameCards.RemoveAt(randomNumber);
+		}
+
+		if (_gameCards.Count == 0) OnCardsEnd?.Invoke();
+
+		for (int i = CardsCount - 1; i >  _gameCards.Count - 1; i--) transform.GetChild(i).gameObject.SetActive(false);
 
 		photonView.RPC("Distribution", RpcTarget.All, _cardsByActors);
 	}
@@ -35,6 +88,8 @@ public class DeckOfCards : MonoBehaviourPunCallbacks
 	public void Distribution(Dictionary<int, int> cardsByActors)
 	{
 		ReceiveCard(cardsByActors);
+
+		_distributionSound.Play();
 
 		OnCardsDistribution?.Invoke();
 	}

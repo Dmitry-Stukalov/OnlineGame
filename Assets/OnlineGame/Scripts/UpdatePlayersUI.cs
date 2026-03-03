@@ -33,7 +33,7 @@ public class UpdatePlayersUI : MonoBehaviourPunCallbacks
 	[PunRPC]
 	public void UpdatePlayersHealth(Dictionary<int, int> playersHealth)
 	{
-		if (_players.Count != PhotonNetwork.PlayerList.Length) UpdatePlayersDictionary();
+		UpdatePlayersDictionary();
 
 		foreach (var player in PhotonNetwork.PlayerList)
 		{
@@ -42,25 +42,23 @@ public class UpdatePlayersUI : MonoBehaviourPunCallbacks
 				if (player.ActorNumber == key)
 				{
 					_players[key].GetComponent<PlayerHealth>().SetHealth(playersHealth[key]);
-					_players[key].GetComponent<PlayerHealth>().UpdateText();
+					_players[key].GetComponent<PlayerHealth>().UpdateMushrooms();
 					break;
 				}
 			}
 		}
-
-		//foreach (var player in PhotonNetwork.PlayerList) _players[player.ActorNumber].GetComponent<PlayerHealth>().UpdateText();
 	}
 
 	private void UpdatePlayersName()
 	{
+		UpdatePlayersDictionary();
+
 		foreach (var player in PhotonNetwork.PlayerList) _players[player.ActorNumber].GetComponentInChildren<TextMeshPro>().text = player.NickName;
 	}
 
 	private void UpdatePlayersDictionary()
 	{
 		_players.Clear();
-
-		//foreach (var key in _players.Keys) _players[key].GetComponent<PlayerHealth>().OnHealthChange -= () => photonView.RPC("UpdatePlayersHealth", RpcTarget.All);// StartCoroutine(SpawnPause(1));
 
 		foreach (var player in PhotonNetwork.PlayerList)
 		{
@@ -69,8 +67,6 @@ public class UpdatePlayersUI : MonoBehaviourPunCallbacks
 			if (needPlayer != null)
 			{
 				_players.Add(player.ActorNumber, needPlayer);
-
-				//needPlayer.GetComponent<PlayerHealth>().OnHealthChange += () => photonView.RPC("UpdatePlayersHealth", RpcTarget.All); //StartCoroutine(SpawnPause(1));
 			}
 		}
 	}
@@ -97,22 +93,17 @@ public class UpdatePlayersUI : MonoBehaviourPunCallbacks
 
 	private IEnumerator SpawnPause(int number)
 	{
-		yield return new WaitForSeconds(0.5f);
+		yield return new WaitForSeconds(1f);
 
 		switch (number)
 		{
 			case -1:
 				UpdatePlayersDictionary();
 				UpdatePlayersName();
-				//UpdatePlayersHealth();
 			break;
 
 			case 0:
 				UpdatePlayersName();
-			break;
-
-			case 1:
-				//UpdatePlayersHealth();
 			break;
 
 			case 2:

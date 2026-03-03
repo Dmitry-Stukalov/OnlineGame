@@ -14,7 +14,7 @@ public class FireCard : DamageCard
 	[PunRPC]
 	private void PlayEffect(Vector3 targetPosition)
 	{
-		Effect.transform.position = new Vector3(targetPosition.x, targetPosition.y - 1, targetPosition.z);
+		Effect.transform.position = new Vector3(targetPosition.x, targetPosition.y - 0.2f, targetPosition.z);
 		Effect?.Play();
 	}
 }

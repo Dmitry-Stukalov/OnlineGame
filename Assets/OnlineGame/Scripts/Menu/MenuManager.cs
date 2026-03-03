@@ -9,16 +9,16 @@ public class MenuManager : MonoBehaviourPunCallbacks
 {
 	[SerializeField] private GameObject CannotConnectToRoomObject;
 	public string RoomName { get; set; } = "BaseName";
-	public int PlayersCount { get; set; } = 5;
+	public int PlayersCount { get; set; } = 3;
 	public string PlayerName { get; set; } = "Мастер говна";
 
 	public void CreateRoom()
 	{
-		Debug.Log($"Создаю комнату: {RoomName}, с количеством игроков {PlayersCount}. Мое имя: {PlayerName}");
+		Debug.Log($"Создаю комнату: {RoomName}, с количеством игроков {PlayersCount + 2}. Мое имя: {PlayerName}");
 
 		PhotonNetwork.NickName = PlayerName;
 		RoomOptions roomOptions = new RoomOptions();
-		roomOptions.MaxPlayers = PlayersCount;
+		roomOptions.MaxPlayers = PlayersCount + 2;
 		PhotonNetwork.CreateRoom(RoomName, roomOptions, TypedLobby.Default);
 	}
 
@@ -26,7 +26,6 @@ public class MenuManager : MonoBehaviourPunCallbacks
 	{
 		PhotonNetwork.NickName = PlayerName;
 		PhotonNetwork.JoinRoom(RoomName);
-		//PhotonNetwork.JoinRandomRoom();
 	}
 
 

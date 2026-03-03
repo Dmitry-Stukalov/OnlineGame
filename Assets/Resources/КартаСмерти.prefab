@@ -34,15 +34,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4638377481891691631, guid: 83ad694f134ab954580473212156b35a, type: 3}
       propertyPath: m_LocalScale.x
-      value: 3
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 4638377481891691631, guid: 83ad694f134ab954580473212156b35a, type: 3}
       propertyPath: m_LocalScale.y
-      value: 2.1136365
+      value: 7.045455
       objectReference: {fileID: 0}
     - target: {fileID: 4638377481891691631, guid: 83ad694f134ab954580473212156b35a, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.10364543
+      value: 0.34548476
       objectReference: {fileID: 0}
     - target: {fileID: 4638377481891691631, guid: 83ad694f134ab954580473212156b35a, type: 3}
       propertyPath: m_LocalPosition.x
@@ -141,7 +141,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 861560a5567d3f845a841ead423607a6, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.04
+      value: 0.044
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 861560a5567d3f845a841ead423607a6, type: 3}
       propertyPath: m_LocalPosition.x
@@ -236,7 +236,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   <Effect>k__BackingField: {fileID: 5175537579831063963}
-  <EffectValue>k__BackingField: 1000
+  <EffectValue>k__BackingField: 10
   <PointValue>k__BackingField: 1
   <EffectTime>k__BackingField: 3
 --- !u!65 &3293895157139303102

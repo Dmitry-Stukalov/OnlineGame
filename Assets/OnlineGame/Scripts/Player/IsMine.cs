@@ -7,6 +7,7 @@ public class IsMine : MonoBehaviour
 	[SerializeField] private GameObject _camera;
 	[SerializeField] private PlayerLook _playerLook;
 	[SerializeField] private PlayerHealth _playerHealth;
+	[SerializeField] private PlayerHealthMushrooms _playersHealthMushrooms;
 	[SerializeField] private List<GameObject> _UI;
 	[SerializeField] private PhotonView _photonView;
 
@@ -17,6 +18,7 @@ public class IsMine : MonoBehaviour
 			_camera.SetActive(false);
 			_playerLook.enabled = false;
 			_playerHealth.enabled = false;
+			//_playersHealthMushrooms.enabled = false;
 
 			for (int i = 0; i < _UI.Count; i++) _UI[i].SetActive(false);
 		}

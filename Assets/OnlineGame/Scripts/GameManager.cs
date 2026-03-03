@@ -5,14 +5,20 @@ using Photon.Realtime;
 using System.Threading;
 using System.Linq;
 using System;
+using System.Collections;
 
 
 public class GameManager : MonoBehaviourPunCallbacks
 {
+	[Header("Death")]
+	[SerializeField] private GameObject DeathCameraCenter;
+	[SerializeField] private Camera DeathCamera;
+
 	[SerializeField] private GameObject _player;
 	[SerializeField] private List<SpawnPoint> _spawnPoints;
 	[SerializeField] private DeckOfCards _deckOfCards;
 	[SerializeField] private UpdatePlayersUI _updatePlayersUI;
+	[SerializeField] private Clocks _clocks;
 	private Dictionary<int, int> _playersPoints = new Dictionary<int, int>();
 	private Dictionary<int, int> _playerHealths = new Dictionary<int, int>();
 	private List<Transform> _playersTransform = new List<Transform>();
@@ -20,6 +26,8 @@ public class GameManager : MonoBehaviourPunCallbacks
 	private Timer _thinkingPhaseTimer;
 	private Timer _playPhaseTimer;					//Заглушка
 	private int _gamePhase = -1;
+	private bool IsCardsEnd = false;
+	private bool IsGameStart = false;
 
 	public event Action OnThinkingPhaseStart;
 	public event Action OnThinkingPhaseEnd;
@@ -36,18 +44,23 @@ public class GameManager : MonoBehaviourPunCallbacks
 		}
 
 		var player = PhotonNetwork.Instantiate(_player.name, _spawnPoints[0].GetSpawnPointTransform().position, Quaternion.identity);
-		player.GetComponent<PlayerLook>().Initializing(_spawnPoints[0].GetSpawnStump().transform.rotation.eulerAngles.y);
-		//player.transform.rotation = _spawnPoints[0].GetSpawnStump().transform.rotation;
+
+		_spawnPoints[0].ActivateMushrooms();
+
+		player.GetComponent<PlayerLook>().Initializing(_spawnPoints[0].GetSpawnStump().transform.rotation.eulerAngles.y, DeathCameraCenter, DeathCamera);
+		player.GetComponent<PlayerHealthMushrooms>().SetMushrooms(_spawnPoints[0].GetSpawnStump().GetComponentInChildren<SpawnPoint>().GetMushrooms());
 		_spawnPoints[0].IsEmpty = false;
 
-		_playPhaseTimer = new Timer(10f);
+		_playPhaseTimer = new Timer(5f);
 		_playPhaseTimer.OnTimerEnd += () => photonView.RPC("FinalPhase", RpcTarget.All);
 
-		_thinkingPhaseTimer = new Timer(10f);
+		_thinkingPhaseTimer = new Timer(16f);
+		_thinkingPhaseTimer.OnSecondTick += () => photonView.RPC("ClocksTick", RpcTarget.All);
 		_thinkingPhaseTimer.OnTimerEnd += () => photonView.RPC("ThinkingPhaseEnd", RpcTarget.All);
 		_thinkingPhaseTimer.SetPause();
 
 		_deckOfCards.OnCardsDistribution += () => photonView.RPC("ThinkingPhaseStart", RpcTarget.All);
+		_deckOfCards.OnCardsEnd += () => IsCardsEnd = true;
 
 		_playerHealths[1] = 10;
 	}
@@ -55,20 +68,59 @@ public class GameManager : MonoBehaviourPunCallbacks
 	//Срабатывает локально для клиентов
 	public override void OnJoinedRoom()
 	{
-		var player = PhotonNetwork.Instantiate(_player.name, _spawnPoints[PhotonNetwork.PlayerList.Length - 1].GetSpawnPointTransform().position, Quaternion.identity);
+		if (!IsGameStart)
+		{
+			var player = PhotonNetwork.Instantiate(_player.name, _spawnPoints[PhotonNetwork.PlayerList.Length - 1].GetSpawnPointTransform().position, Quaternion.identity);
 
-		player.GetComponent<PlayerLook>().Initializing(_spawnPoints[PhotonNetwork.PlayerList.Length - 1].transform.rotation.eulerAngles.y);
+			player.GetComponent<PlayerLook>().Initializing(_spawnPoints[PhotonNetwork.PlayerList.Length - 1].transform.rotation.eulerAngles.y, DeathCameraCenter, DeathCamera);
+			player.GetComponent<PlayerHealthMushrooms>().SetMushrooms(_spawnPoints[PhotonNetwork.PlayerList.Length - 1].GetSpawnStump().GetComponentInChildren<SpawnPoint>().GetMushrooms());
 
-		for (int i = 0; i < PhotonNetwork.CountOfPlayers; i++) _spawnPoints[i].IsEmpty = false;
+			StartCoroutine(FindPlayersOnJoin());
+		}
 	}
 
 	//Срабатывает у всех
 	public override void OnPlayerEnteredRoom(Player newPlayer)
 	{
+		StartCoroutine(NewPlayerInitializing(newPlayer));
+
+		//var player = FindPlayerByActor(newPlayer.ActorNumber);
+
+		//_spawnPoints[PhotonNetwork.PlayerList.Length - 1].ActivateMushrooms();
+		//_spawnPoints[PhotonNetwork.PlayerList.Length - 1].IsEmpty = false;
+
+		//player.GetComponent<PlayerHealthMushrooms>().SetMushrooms(_spawnPoints[PhotonNetwork.PlayerList.Length - 1].GetSpawnStump().GetComponentInChildren<SpawnPoint>().GetMushrooms());
+
+		//if (PhotonNetwork.IsMasterClient)
+		//	_playerHealths[newPlayer.ActorNumber] = 10;
+	}
+
+	private IEnumerator NewPlayerInitializing(Player newPlayer)
+	{
+		yield return new WaitForSeconds(1f);
+
+		var player = FindPlayerByActor(newPlayer.ActorNumber);
+
+		_spawnPoints[PhotonNetwork.PlayerList.Length - 1].ActivateMushrooms();
 		_spawnPoints[PhotonNetwork.PlayerList.Length - 1].IsEmpty = false;
+
+		player.GetComponent<PlayerHealthMushrooms>().SetMushrooms(_spawnPoints[PhotonNetwork.PlayerList.Length - 1].GetSpawnStump().GetComponentInChildren<SpawnPoint>().GetMushrooms());
 
 		if (PhotonNetwork.IsMasterClient)
 			_playerHealths[newPlayer.ActorNumber] = 10;
+	}
+
+	private IEnumerator FindPlayersOnJoin()
+	{
+		yield return new WaitForSeconds(0.5f);
+
+		for (int i = 0; i < PhotonNetwork.CountOfPlayers; i++) _spawnPoints[i].IsEmpty = false;
+
+		foreach (var p in PhotonNetwork.PlayerList)
+		{
+			_spawnPoints[p.ActorNumber - 1].ActivateMushrooms();
+			FindPlayerByActor(p.ActorNumber)?.GetComponent<PlayerHealthMushrooms>().SetMushrooms(_spawnPoints[p.ActorNumber - 1].GetSpawnStump().GetComponentInChildren<SpawnPoint>().GetMushrooms());
+		}
 	}
 
 	//Срабатывает у всех
@@ -77,12 +129,39 @@ public class GameManager : MonoBehaviourPunCallbacks
 		_spawnPoints[PhotonNetwork.PlayerList.Length - 1].IsEmpty = true;
 	}
 
+	public void RestartGame()
+	{
+		if (!PhotonNetwork.IsMasterClient) return;
+
+		//Перезагрузить ХП
+		foreach (var key in _playerHealths.Keys.ToArray()) _playerHealths[key] = 10;
+
+		//Перезагрузить очки
+		foreach (var key in _playersPoints.Keys.ToArray()) _playersPoints[key] = 0;
+
+		//Перезагрузить колоду
+		_deckOfCards.SetCardsCount(0);
+
+		_gamePhase = 0;
+
+		_updatePlayersUI.photonView.RPC("UpdatePlayersHealth", RpcTarget.All, _playerHealths);
+
+		IsCardsEnd = false;
+
+		StartCoroutine(DistributionPhasePause());
+
+		//Воскресить мертвых
+		_players[0].photonView.RPC("RestartGameForAll", RpcTarget.All);
+	}
+
 	[PunRPC]
 	public void StartGame()
 	{
 		if (_gamePhase != -1) return;
 
 		_gamePhase = 0;
+
+		IsGameStart = true;
 
 		if (PhotonNetwork.IsMasterClient)
 			foreach (var player in FindObjectsByType<PlayerHealth>(FindObjectsSortMode.None)) _players.Add(player);
@@ -93,7 +172,9 @@ public class GameManager : MonoBehaviourPunCallbacks
 		foreach (SpawnPoint spawnPoint in _spawnPoints) 
 			if (!spawnPoint.IsEmpty) _playersTransform.Add(spawnPoint.transform);
 
-		DistributionPhase();
+		_updatePlayersUI.photonView.RPC("UpdatePlayersHealth", RpcTarget.All, _playerHealths);
+
+		StartCoroutine(DistributionPhasePause());
 	}
 
 	private void DistributionPhase()
@@ -103,6 +184,13 @@ public class GameManager : MonoBehaviourPunCallbacks
 		_gamePhase = 1;
 
 		_deckOfCards.GetRandomCards();
+	}
+
+	private IEnumerator DistributionPhasePause()
+	{
+		yield return new WaitForSeconds(1);
+
+		DistributionPhase();
 	}
 
 	[PunRPC]
@@ -120,6 +208,9 @@ public class GameManager : MonoBehaviourPunCallbacks
 		_gamePhase = 3;
 
 		if (PhotonNetwork.IsMasterClient) _thinkingPhaseTimer.ResetTimer(true);
+
+		//photonView.RPC("ToStart", RpcTarget.All);
+		_clocks.ToStart();
 
 		photonView.RPC("PlayPhase", RpcTarget.All);
 
@@ -147,7 +238,17 @@ public class GameManager : MonoBehaviourPunCallbacks
 		if (PhotonNetwork.IsMasterClient) _playPhaseTimer.ResetTimer(false);
 		else return;
 
-		for (int i = 0; i < _players.Count; i++)
+		/*foreach (var player in PhotonNetwork.PlayerList)
+		{
+            if (_playerHealths[player.ActorNumber] > 0)
+            {
+				t++;
+
+				playerNumberActor = player.ActorNumber;
+            }
+        }*/
+
+		/*for (int i = 0; i < _players.Count; i++)
 		{
 			if (_players[i].GetHealth() > 0)
 			{
@@ -155,16 +256,44 @@ public class GameManager : MonoBehaviourPunCallbacks
 
 				playerNumberActor = _players[i].photonView.OwnerActorNr;
 			}
+		}*/
+
+		/*if (t <= 1 || IsCardsEnd) photonView.RPC("GameEnd", RpcTarget.All, playerNumberActor);
+		else StartCoroutine(DistributionPhasePause()); //DistributionPhase();*/
+
+		StartCoroutine(CheckHealthPhase());
+	}
+
+	private IEnumerator CheckHealthPhase()
+	{
+		//if (!PhotonNetwork.IsMasterClient) return;
+		yield return new WaitForSeconds(0.5f);
+
+		int t = 0;
+		int playerNumberActor = 0;
+
+		foreach (var player in PhotonNetwork.PlayerList)
+		{
+			if (_playerHealths[player.ActorNumber] > 0)
+			{
+				t++;
+
+				playerNumberActor = player.ActorNumber;
+			}
 		}
 
-		if (t <= 1) photonView.RPC("GameEnd", RpcTarget.All, playerNumberActor);
-		else DistributionPhase();
+		if (t <= 1 || IsCardsEnd) photonView.RPC("GameEnd", RpcTarget.All, playerNumberActor);
+		else StartCoroutine(DistributionPhasePause()); //DistributionPhase();
 	}
 
 	[PunRPC]
 	public void GameEnd(int survivePlayerActorNumber)
 	{
 		if (!PhotonNetwork.IsMasterClient) return;
+
+		IsGameStart = false;
+
+		_deckOfCards.CardsCount = -1;
 
 		if (survivePlayerActorNumber != 0) _updatePlayersUI.photonView.RPC("UpdateWinImage", RpcTarget.All, survivePlayerActorNumber, _playersPoints[survivePlayerActorNumber]);
 		else
@@ -203,11 +332,25 @@ public class GameManager : MonoBehaviourPunCallbacks
 		_updatePlayersUI.photonView.RPC("UpdatePlayersHealth", RpcTarget.All, _playerHealths);
     }
 
+	private GameObject FindPlayerByActor(int actorNumber)
+	{
+		foreach (var player in FindObjectsByType<PhotonView>(FindObjectsSortMode.None))
+			if (player.OwnerActorNr == actorNumber && player.gameObject.CompareTag("Player")) return player.gameObject;
+
+		return null;
+	}
+
 	//[PunRPC]
 	//public void SetCardParent(int playerActorNumber)
 	//{
 	//	_deckOfCards.photonView.RPC("SetCardsParents", RpcTarget.All, playerActorNumber);
 	//}
+
+	[PunRPC]
+	public void ClocksTick()
+	{
+		_clocks.ChangeStage();
+	}
 
 	private void Update()
 	{

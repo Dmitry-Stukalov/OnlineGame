@@ -61,6 +61,12 @@ MonoBehaviour:
   - SetCardsParents
   - SetCardParent
   - CheckHealth
+  - UpdateMushrooms
+  - HideMushroom
+  - SetMushrooms
+  - ShowMushroom
+  - ClocksTick
+  - RestartGameForAll
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 0

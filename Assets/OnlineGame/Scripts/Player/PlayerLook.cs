@@ -13,8 +13,12 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 	[SerializeField] private float LookSpeed;
 	[SerializeField] private PlayerName _playerName;
 	[SerializeField] private GameObject _winImage;
+	[SerializeField] private GameObject _restartButton;
 	[SerializeField] private TextMeshProUGUI _winText;
 	[SerializeField] private TintsScaler _tintsScaler;
+
+	private GameObject DeathCameraCenter; 
+	private Camera DeathCamera;
 
 	[Header("RayCast")]
 	[SerializeField] private Camera MyCamera;
@@ -34,13 +38,16 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 	private int _myPoints;
 	private bool IsCanPlayCard = false;
 	private bool IsChooseTarget = false;
+	private bool IsLockCamera = false;
 	public bool IsHaveCard = false;
 
-	public void Initializing(float startRotation)
+	public void Initializing(float startRotation, GameObject deathCameraObject, Camera deathCamera)
 	{
 		if (!photonView.IsMine) return;
 
 		_startRotation = startRotation;
+		DeathCameraCenter = deathCameraObject;
+		DeathCamera = deathCamera;
 
 		LookAction = InputSystem.actions.FindAction("Look");
 
@@ -57,10 +64,16 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 		ScreenCenter = new Vector3(Screen.width / 2, Screen.height / 2, 0);
 
 		_playerHealth.OnHealthChange += SetHealth;
+		_playerHealth.OnDeath += Death;
 
-		SetHealth();
+		if (!PhotonNetwork.IsMasterClient)
+		{
+			TintForStartPlay.SetActive(false);
+			_restartButton.SetActive(false);
+		}
 
 		_tintsScaler.Initializing();
+
 	}
 
 	public void OnTriggerEnter(Collider other)
@@ -72,7 +85,6 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 			other.transform.SetParent(CardPlace.transform, false);
 			other.transform.localRotation = Quaternion.Euler(90, 90, 90);
 			other.transform.localPosition = Vector3.zero;
-			//if (_gameManager != null) _gameManager.photonView.RPC("SetCardParent", RpcTarget.MasterClient, photonView.OwnerActorNr);
 		}
 	}
 
@@ -109,19 +121,8 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 	public void ThinkingPhaseEnd()
 	{
 		if (!photonView.IsMine) return;
-		//if (IsChooseTarget) PlayCard(_myCards[0], _enemy);
 
 		IsCanPlayCard = false;
-		//IsChooseTarget = false;
-
-		//for (int i = 0; i < _myCards.Count; i++)
-		//{
-		//	_myCards[i].DestroyCard();
-		//	_myCards.RemoveAt(i);
-		//}
-
-		//SetPoints();
-		//_playerHealth.photonView.RPC("CheckHealth", RpcTarget.All);
 	}
 
 	public void PlayPhase()
@@ -144,7 +145,6 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 
 		SetPoints();
 		_playerHealth.CheckHealth();
-		SetHealth();
 	}
 
 	public void GameEnd(string text)
@@ -153,6 +153,9 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 
 		_winImage.SetActive(true);
 		_winText.text = text;
+
+		Cursor.lockState = CursorLockMode.Confined;
+		Cursor.visible = true;
 	}
 
 	private void SetHealth()
@@ -167,10 +170,71 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 		else _gameManager.SetPoint(1, _myPoints);
 	}
 
+	private void Death()
+	{
+		MyCamera.enabled = false;
+		DeathCamera.enabled = true;
+	}
+
+	private void Alive()
+	{
+		Debug.Log(DeathCamera);
+		Debug.Log(MyCamera);
+		GameObject.FindWithTag("DeathCamera").GetComponent<Camera>().enabled = false;
+		//DeathCamera.enabled = false;
+		GameObject.FindWithTag("MainCamera").GetComponent<Camera>().enabled = true;
+		//MyCamera.enabled = true;
+	}
+
+	public void RestartGame()
+	{
+		//Cursor.lockState = CursorLockMode.Locked;
+		//Cursor.visible = false;
+
+		//_myPoints = 0;
+		//_playerHealth.SetHealth(10);
+		//_winImage.SetActive(false);
+
+		_gameManager.RestartGame();
+
+		photonView.RPC("RestartGameForAll", RpcTarget.All);
+	}
+
+	[PunRPC]
+	public void RestartGameForAll()
+	{
+		if (!MyCamera.enabled)
+		{
+			MyCamera.enabled = true;
+			DeathCamera.enabled = false;
+		}
+
+		Cursor.lockState = CursorLockMode.Locked;
+		Cursor.visible = false;
+
+		_myPoints = 0;
+		_playerHealth.SetHealth(10);
+		_playerHealth.IsDead = false;
+		_winImage.SetActive(false);
+	}
+
 	private void Update()
 	{
 		if (!photonView.IsMine) return;
-		if (_playerHealth.IsDead) return;
+
+		if (Keyboard.current.escapeKey.wasPressedThisFrame)
+		{
+			if (Cursor.visible)
+			{
+				Cursor.lockState = CursorLockMode.Locked;
+				Cursor.visible = false;
+			}
+			else
+			{
+				Cursor.lockState = CursorLockMode.Confined;
+				Cursor.visible = true;
+			}
+		}
 
 		if (Keyboard.current.spaceKey.wasPressedThisFrame && PhotonNetwork.IsMasterClient)
 		{
@@ -178,7 +242,7 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 			TintForStartPlay.SetActive(false);
 		}
 
-		if (Keyboard.current.escapeKey.wasPressedThisFrame) Application.Quit();
+		IsLockCamera = Cursor.visible;
 
 		if (Mouse.current.leftButton.wasPressedThisFrame && _myCards.Count != 0 && IsCanPlayCard && _enemy != null) IsChooseTarget = true;
 		if (Mouse.current.rightButton.wasPressedThisFrame && _myCards.Count != 0 && IsCanPlayCard)
@@ -186,22 +250,32 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 			IsChooseTarget = true;
 			_enemy = gameObject;
 		}
-		if (Keyboard.current.fKey.wasPressedThisFrame && _myCards.Count != 0 && IsCanPlayCard && IsChooseTarget) IsChooseTarget = false;
+		if (Mouse.current.middleButton.wasPressedThisFrame && _myCards.Count != 0 && IsCanPlayCard && IsChooseTarget) IsChooseTarget = false;
+
+		if (IsLockCamera) return;
 
 		MouseAxis = LookAction.ReadValue<Vector2>();
 
-		RotationX += -MouseAxis.y * LookSpeed;
-		RotationX = Mathf.Clamp(RotationX, -20, 20);
+		if (_playerHealth.IsDead)
+		{
+			RotationY += -MouseAxis.x * LookSpeed;
 
-		RotationY += -MouseAxis.x * LookSpeed;
-		RotationY = Mathf.Clamp(RotationY, -45, 45);
+			DeathCameraCenter.transform.rotation = Quaternion.Euler(0, -RotationY, 0);
+		}
+		else
+		{
+			RotationX += -MouseAxis.y * LookSpeed;
+			RotationX = Mathf.Clamp(RotationX, -20, 20);
 
-		transform.rotation = Quaternion.Euler(RotationX, -RotationY + _startRotation, 0);
+			RotationY += -MouseAxis.x * LookSpeed;
+
+			transform.rotation = Quaternion.Euler(RotationX, -RotationY + _startRotation, 0);
+		}
 	}
 
 	private void FixedUpdate()
 	{
-		if (!photonView.IsMine) return;
+		if (!photonView.IsMine || _playerHealth.IsDead) return;
 
 		Ray ray = MyCamera.ScreenPointToRay(ScreenCenter);
 

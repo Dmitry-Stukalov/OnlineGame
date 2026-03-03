@@ -5,11 +5,13 @@ public class Timer
 {
 	public float MaxTime { get; private set; }
 	public float CurrentTime { get; private set; }
+	public float CurrentTimeSec { get; private set; }
 	public bool TimerIsEnd { get; private set; }
 	public bool TimerIsOnStart { get; private set; }
 	public bool Pause { get; private set; }
 
 	public event Action OnTick;
+	public event Action OnSecondTick;
 	public event Action OnTimerEnd;
 	public event Action OnTimerStart;
 	public event Action OnTimerReverse;
@@ -76,10 +78,18 @@ public class Timer
 		CurrentTime += time;
 		CurrentTime = Mathf.Clamp(CurrentTime, 0, MaxTime);
 
+		CurrentTimeSec += time;
+
 		if (CurrentTime >= MaxTime)
 		{
 			TimerIsEnd = true;
 			OnTimerEnd?.Invoke();
+		}
+
+		if (CurrentTimeSec >= 1f)
+		{
+			CurrentTimeSec /= 10;
+			OnSecondTick?.Invoke();
 		}
 	}
 
