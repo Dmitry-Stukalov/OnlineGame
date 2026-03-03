@@ -9,7 +9,7 @@ public class MenuManager : MonoBehaviourPunCallbacks
 {
 	[SerializeField] private GameObject CannotConnectToRoomObject;
 	public string RoomName { get; set; } = "BaseName";
-	public int PlayersCount { get; set; } = 3;
+	public int PlayersCount { get; set; } = 8;
 	public string PlayerName { get; set; } = "Мастер говна";
 
 	public void CreateRoom()
