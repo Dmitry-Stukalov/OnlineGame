@@ -17,7 +17,7 @@ public class DeckOfCards : MonoBehaviourPunCallbacks
 	private Dictionary<int, int> _cardsByActors = new Dictionary<int, int>();
 	private Dictionary<GameObject, GameObject> _cardsObjectsByActors = new Dictionary<GameObject, GameObject>();
 	public int CardsCount { get; set; } = 0;
-	private int _cardsCount = -1;
+	public int _cardsCount = -1;
 
 	public event Action OnCardsDistribution;
 	public event Action OnCardsEnd;
@@ -29,14 +29,19 @@ public class DeckOfCards : MonoBehaviourPunCallbacks
 
 		CardsCount = playersCount * 5;
 
+		Debug.Log(CardsCount);
+
 		_cardsCount = CardsCount;
+
+		_gameCards.Clear();
 
 		for (int i = 0; i < _cardsCount; i++) transform.GetChild(i).gameObject.SetActive(true);
 
-		for (int i = 1; i < playersCount / 2; i++)
+		for (int i = 0; i < playersCount / 2; i++)
 		{
 			_gameCards.Add(0);
 			_cardsCount--;
+			Debug.Log("Добавлена карта смерти");
 		}
 
 		for (int i = 0; i < playersCount; i++)
@@ -80,6 +85,8 @@ public class DeckOfCards : MonoBehaviourPunCallbacks
 		if (_gameCards.Count == 0) OnCardsEnd?.Invoke();
 
 		for (int i = CardsCount - 1; i >  _gameCards.Count - 1; i--) transform.GetChild(i).gameObject.SetActive(false);
+
+		Debug.Log($"Карт осталось: {_gameCards.Count}");
 
 		photonView.RPC("Distribution", RpcTarget.All, _cardsByActors);
 	}

@@ -127,11 +127,15 @@ public class GameManager : MonoBehaviourPunCallbacks
 	public override void OnPlayerLeftRoom(Player otherPlayer)
 	{
 		_spawnPoints[PhotonNetwork.PlayerList.Length - 1].IsEmpty = true;
+		_spawnPoints[otherPlayer.ActorNumber - 1].DeactivateMushrooms();
 	}
 
 	public void RestartGame()
 	{
 		if (!PhotonNetwork.IsMasterClient) return;
+
+		//Воскресить мертвых
+		_players[0].photonView.RPC("RestartGameForAll", RpcTarget.All);
 
 		//Перезагрузить ХП
 		foreach (var key in _playerHealths.Keys.ToArray()) _playerHealths[key] = 10;
@@ -140,7 +144,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 		foreach (var key in _playersPoints.Keys.ToArray()) _playersPoints[key] = 0;
 
 		//Перезагрузить колоду
-		_deckOfCards.SetCardsCount(0);
+		_deckOfCards.SetCardsCount(PhotonNetwork.CountOfPlayers);
 
 		_gamePhase = 0;
 
@@ -151,7 +155,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 		StartCoroutine(DistributionPhasePause());
 
 		//Воскресить мертвых
-		_players[0].photonView.RPC("RestartGameForAll", RpcTarget.All);
+		//_players[0].photonView.RPC("RestartGameForAll", RpcTarget.All);
 	}
 
 	[PunRPC]
@@ -293,7 +297,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 
 		IsGameStart = false;
 
-		_deckOfCards.CardsCount = -1;
+		_deckOfCards._cardsCount = -1;
 
 		if (survivePlayerActorNumber != 0) _updatePlayersUI.photonView.RPC("UpdateWinImage", RpcTarget.All, survivePlayerActorNumber, _playersPoints[survivePlayerActorNumber]);
 		else

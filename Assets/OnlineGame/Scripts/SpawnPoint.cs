@@ -14,4 +14,6 @@ public class SpawnPoint : MonoBehaviour
 	public GameObject GetMushrooms() => _mushrooms;
 
 	public void ActivateMushrooms() => _mushrooms.SetActive(true);
+
+	public void DeactivateMushrooms() => _mushrooms.SetActive(false);
 }

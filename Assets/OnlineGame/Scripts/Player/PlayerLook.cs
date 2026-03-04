@@ -203,6 +203,8 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 	[PunRPC]
 	public void RestartGameForAll()
 	{
+		if (!photonView.IsMine) return;
+
 		if (!MyCamera.enabled)
 		{
 			MyCamera.enabled = true;
@@ -216,6 +218,8 @@ public class PlayerLook : MonoBehaviourPunCallbacks
 		_playerHealth.SetHealth(10);
 		_playerHealth.IsDead = false;
 		_winImage.SetActive(false);
+
+		Debug.Log(_winImage);
 	}
 
 	private void Update()
